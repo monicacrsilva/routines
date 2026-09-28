@@ -18,7 +18,7 @@ A data apresentada usa sempre a data real do dispositivo. Os parâmetros `time` 
 
 Pode forçar uma rotina pelo respetivo `id`, mesmo fora do dia ou horário configurado:
 
-- `index.html?routine=manha`
+- `index.html?routine=manha-escola`
 - `index.html?routine=jantar`
 - `index.html?routine=jantar&time=19:42`
 
@@ -130,7 +130,7 @@ Exemplo mínimo de uma rotina com âncora de início:
 
 As milestones aparecem no fim da timeline pela ordem configurada. Não têm duração, não alteram os horários calculados das etapas e nunca se tornam a tarefa central ou recebem o destaque de etapa atual.
 
-Em utilização normal, o painel compara o dia e a hora atual com o início, o fim e a tolerância calculados de todas as rotinas. Durante a tolerância mantém a timeline visível no estado atrasado. Uma rotina realmente em curso tem precedência sobre outra que esteja apenas em tolerância; entre rotinas no mesmo estado, vence a maior `priority`. Depois da tolerância, a rotina desaparece. Fora de qualquer rotina, mostra apenas o relógio e “SEM ROTINA ATIVA”, sem exigir seleção manual.
+Em utilização normal, o painel compara o dia e a hora atual com o início, o fim e a tolerância calculados de todas as rotinas. Durante a tolerância mantém a timeline visível no estado atrasado. Uma rotina realmente em curso tem precedência sobre outra que esteja apenas em tolerância; entre rotinas no mesmo estado, vence a maior `priority`. Depois da tolerância, a rotina desaparece. Fora de qualquer rotina, mostra “SEM ROTINA ATIVA” e indica discretamente o dia e a hora de início da próxima rotina, sem exigir seleção manual.
 
 ## Publicar no GitHub Pages
 

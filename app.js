@@ -321,6 +321,54 @@
     return active || overdue;
   }
 
+  function findNextSchedule(config, day, nowSeconds) {
+    var next = null;
+    var dayOffset;
+    var targetDay;
+    var routines;
+    var index;
+    var schedule;
+    var absoluteStart;
+
+    for (dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+      targetDay = (day + dayOffset) % 7;
+      routines = getRoutineForDay(config, targetDay);
+
+      for (index = 0; index < routines.length; index += 1) {
+        schedule = buildSchedule(routines[index], targetDay);
+        absoluteStart = (dayOffset * 24 * 60 * 60) + schedule.startSeconds;
+
+        if (absoluteStart > nowSeconds && (!next || absoluteStart < next.absoluteStart)) {
+          next = {
+            schedule: schedule,
+            daysAhead: dayOffset,
+            day: targetDay,
+            absoluteStart: absoluteStart
+          };
+        }
+      }
+    }
+
+    return next;
+  }
+
+  function formatNextSchedule(next) {
+    var weekdays = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+    var dayText;
+
+    if (!next) {
+      return "";
+    }
+    if (next.daysAhead === 0) {
+      dayText = "hoje";
+    } else if (next.daysAhead === 1) {
+      dayText = "amanhã";
+    } else {
+      dayText = weekdays[next.day];
+    }
+    return dayText + " · " + formatClock(next.schedule.startSeconds);
+  }
+
   function getViewState(schedule, nowSeconds) {
     var steps = schedule.steps;
     var index;
@@ -474,14 +522,14 @@
     timeline.appendChild(fragment);
   }
 
-  function renderNoRoutine(time) {
+  function renderNoRoutine(time, nextSchedule) {
     document.body.className = "state-idle";
     setText("current-time", formatClock(time.seconds));
     setText("routine-name", "");
     setText("task-icon", "");
     setText("task-name", "SEM ROTINA ATIVA");
-    setText("counter-label", "");
-    setText("countdown", "");
+    setText("counter-label", nextSchedule ? "PRÓXIMA ROTINA" : "");
+    setText("countdown", formatNextSchedule(nextSchedule));
     document.getElementById("timeline").innerHTML = "";
     document.getElementById("test-indicator").hidden = true;
   }
@@ -535,13 +583,13 @@
       if (schedule) {
         render(schedule, time);
       } else {
-        renderNoRoutine(time);
+        renderNoRoutine(time, findNextSchedule(config, time.day, time.seconds));
       }
     }
 
     update();
     window.setInterval(update, SECOND);
-  startWeather(config.weather);
+    startWeather(config.weather);
   }
 
   window.ROUTINE_APP = {
@@ -558,7 +606,9 @@
     startWeather: startWeather,
     buildSchedule: buildSchedule,
     getViewState: getViewState,
-    chooseSchedule: chooseSchedule
+    chooseSchedule: chooseSchedule,
+    findNextSchedule: findNextSchedule,
+    formatNextSchedule: formatNextSchedule
   };
 
   if (typeof document !== "undefined") {

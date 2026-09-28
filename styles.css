@@ -278,6 +278,16 @@ h1 {
   color: var(--muted);
 }
 
+.state-idle .counter-label {
+  margin-top: 12px;
+}
+
+.state-idle .countdown {
+  color: var(--muted);
+  font-size: 30px;
+  font-weight: 700;
+}
+
 .state-leave h1,
 .state-overdue h1,
 .state-leave .countdown,
