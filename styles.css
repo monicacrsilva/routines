@@ -361,46 +361,90 @@ h1 {
   }
 }
 
-@media (max-height: 650px) and (orientation: landscape) {
+@media (max-width: 1100px) and (max-height: 750px) and (orientation: landscape) {
   .app-shell {
     padding-top: 12px;
     padding-bottom: 10px;
   }
 
   .topbar {
-    min-height: 58px;
+    min-height: 64px;
   }
 
   .current-time {
-    font-size: 46px;
+    font-size: 48px;
+  }
+
+  .current-date {
+    margin-top: 3px;
+    font-size: 14px;
+  }
+
+  .routine-name {
+    font-size: 20px;
+  }
+
+  .weather {
+    margin-top: 3px;
+    font-size: 16px;
   }
 
   .current-task {
-    min-height: 230px;
-    padding-bottom: 8px;
+    flex: 0 1 290px;
+    min-height: 250px;
+    margin-top: 12px;
+    padding: 6px 14px 10px;
+  }
+
+  .test-indicator {
+    margin-bottom: 2px;
+    font-size: 11px;
   }
 
   .task-icon {
-    height: 58px;
-    font-size: 52px;
+    height: 50px;
+    font-size: 46px;
   }
 
   h1 {
-    margin: 3px 0 8px;
-    font-size: 42px;
+    margin: 2px 0 8px;
+    font-size: 40px;
+  }
+
+  .counter-label {
+    margin-bottom: 1px;
+    font-size: 15px;
   }
 
   .countdown {
-    font-size: 66px;
+    font-size: 64px;
+  }
+
+  .routine-path {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 160px;
+    padding: 12px 0 10px;
   }
 
   .timeline-icon {
-    width: 52px;
-    height: 52px;
-    font-size: 25px;
+    width: 64px;
+    height: 64px;
+    font-size: 30px;
   }
 
   .timeline::before {
-    top: 25px;
+    top: 31px;
+  }
+
+  .timeline-label {
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  .timeline-time {
+    font-size: 13px;
   }
 }
