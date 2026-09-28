@@ -4,6 +4,19 @@
   var SECOND = 1000;
   var MINUTE_SECONDS = 60;
   var lastWeather = null;
+  var audioContext = null;
+  var audioAuthorized = false;
+  var soundConfig = null;
+  var soundAlertState = {
+    initialized: false,
+    routineId: "",
+    stepId: "",
+    mode: "",
+    previousRemaining: null,
+    warningFired: false,
+    urgentFired: false,
+    leaveFired: false
+  };
 
   function parseTime(value) {
     var match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value || "");
@@ -214,6 +227,226 @@
     return window.setInterval(function () {
       fetchWeather(weatherConfig);
     }, refreshMinutes * MINUTE_SECONDS * SECOND);
+  }
+
+  function initAudio() {
+    var AudioContextClass;
+
+    if (audioContext) {
+      return audioContext;
+    }
+
+    AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      return null;
+    }
+
+    try {
+      audioContext = new AudioContextClass();
+      return audioContext;
+    } catch (error) {
+      audioContext = null;
+      return null;
+    }
+  }
+
+  function updateSoundControl(active) {
+    var button = document.getElementById("sound-toggle");
+
+    if (!button) {
+      return;
+    }
+    button.textContent = active ? "🔊 Som ativo" : "🔊 Ativar som";
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.className = "sound-toggle" + (active ? " is-active" : "");
+  }
+
+  function enableAudio() {
+    var context = initAudio();
+    var resumeResult;
+
+    if (!context) {
+      document.getElementById("sound-toggle").hidden = true;
+      return;
+    }
+
+    function markAuthorized() {
+      audioAuthorized = true;
+      updateSoundControl(true);
+    }
+
+    try {
+      if (context.state === "suspended" && context.resume) {
+        resumeResult = context.resume();
+        if (resumeResult && typeof resumeResult.then === "function") {
+          resumeResult.then(markAuthorized, function () {
+            audioAuthorized = false;
+          });
+        } else {
+          markAuthorized();
+        }
+      } else {
+        markAuthorized();
+      }
+    } catch (error) {
+      audioAuthorized = false;
+    }
+  }
+
+  function playBeep(frequency, durationMs, startTime, volume) {
+    var oscillator;
+    var gain;
+    var endTime;
+
+    if (!audioAuthorized || !audioContext) {
+      return false;
+    }
+
+    try {
+      oscillator = audioContext.createOscillator();
+      gain = audioContext.createGain();
+      endTime = startTime + (durationMs / 1000);
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(startTime);
+      oscillator.stop(endTime + 0.02);
+      return true;
+    } catch (error) {
+      audioAuthorized = false;
+      return false;
+    }
+  }
+
+  function playBeepPattern(alertConfig) {
+    var volume;
+    var beeps;
+    var frequency;
+    var durationMs;
+    var gapMs;
+    var startTime;
+    var index;
+
+    if (!audioAuthorized || !audioContext || !soundConfig || !alertConfig || alertConfig.enabled !== true) {
+      return false;
+    }
+
+    volume = Number(soundConfig.volume);
+    beeps = Number(alertConfig.beeps);
+    frequency = Number(alertConfig.frequency);
+    durationMs = Number(alertConfig.durationMs);
+    gapMs = Number(alertConfig.gapMs);
+    if (!isFinite(volume) || !isFinite(beeps) || !isFinite(frequency) || !isFinite(durationMs) || !isFinite(gapMs)) {
+      return false;
+    }
+
+    startTime = audioContext.currentTime + 0.02;
+    for (index = 0; index < Math.max(0, Math.floor(beeps)); index += 1) {
+      playBeep(frequency, durationMs, startTime + (index * (durationMs + gapMs) / 1000), Math.max(0.0001, Math.min(1, volume)));
+    }
+    return true;
+  }
+
+  function resetSoundAlertState() {
+    soundAlertState.initialized = false;
+    soundAlertState.routineId = "";
+    soundAlertState.stepId = "";
+    soundAlertState.mode = "";
+    soundAlertState.previousRemaining = null;
+    soundAlertState.warningFired = false;
+    soundAlertState.urgentFired = false;
+    soundAlertState.leaveFired = false;
+  }
+
+  function handleSoundAlerts(schedule, nowSeconds, sounds) {
+    var state;
+    var routineId;
+    var stepId;
+    var warningSeconds;
+    var urgentSeconds;
+    var sameStep;
+
+    if (!sounds || sounds.enabled !== true) {
+      return;
+    }
+    if (!schedule) {
+      resetSoundAlertState();
+      return;
+    }
+
+    state = getViewState(schedule, nowSeconds);
+    routineId = schedule.routine.id;
+    stepId = state.mode === "active" ? state.step.id : "";
+
+    if (!soundAlertState.initialized || soundAlertState.routineId !== routineId) {
+      resetSoundAlertState();
+      soundAlertState.initialized = true;
+      soundAlertState.routineId = routineId;
+      soundAlertState.stepId = stepId;
+      soundAlertState.mode = state.mode;
+      soundAlertState.previousRemaining = state.mode === "active" ? state.remainingSeconds : null;
+      soundAlertState.warningFired = state.mode === "active" && state.remainingSeconds <= Number(sounds.warning.minutesBeforeEnd) * MINUTE_SECONDS;
+      soundAlertState.urgentFired = state.mode === "active" && state.remainingSeconds <= Number(sounds.urgent.minutesBeforeEnd) * MINUTE_SECONDS;
+      soundAlertState.leaveFired = state.mode === "leave" || state.mode === "overdue";
+      return;
+    }
+
+    sameStep = state.mode === "active" && soundAlertState.mode === "active" && soundAlertState.stepId === stepId;
+    if (state.mode === "active" && !sameStep) {
+      if (soundAlertState.mode === "active" && soundAlertState.stepId !== stepId) {
+        playBeepPattern(sounds.stepChange);
+      }
+      soundAlertState.warningFired = false;
+      soundAlertState.urgentFired = false;
+      soundAlertState.previousRemaining = null;
+    }
+
+    if (state.mode === "active") {
+      warningSeconds = Number(sounds.warning.minutesBeforeEnd) * MINUTE_SECONDS;
+      urgentSeconds = Number(sounds.urgent.minutesBeforeEnd) * MINUTE_SECONDS;
+      if (!soundAlertState.warningFired && sounds.warning.enabled === true &&
+          (soundAlertState.previousRemaining === null || soundAlertState.previousRemaining > warningSeconds) &&
+          state.remainingSeconds <= warningSeconds) {
+        playBeepPattern(sounds.warning);
+        soundAlertState.warningFired = true;
+      }
+      if (!soundAlertState.urgentFired && sounds.urgent.enabled === true &&
+          (soundAlertState.previousRemaining === null || soundAlertState.previousRemaining > urgentSeconds) &&
+          state.remainingSeconds <= urgentSeconds) {
+        playBeepPattern(sounds.urgent);
+        soundAlertState.urgentFired = true;
+      }
+      soundAlertState.previousRemaining = state.remainingSeconds;
+    }
+
+    if (state.mode === "leave" && !soundAlertState.leaveFired) {
+      playBeepPattern(sounds.leaveTime);
+      soundAlertState.leaveFired = true;
+    }
+
+    soundAlertState.routineId = routineId;
+    soundAlertState.stepId = stepId;
+    soundAlertState.mode = state.mode;
+  }
+
+  function setupSoundControl(sounds) {
+    var button = document.getElementById("sound-toggle");
+
+    soundConfig = sounds;
+    if (!sounds || sounds.enabled !== true || !button) {
+      if (button) {
+        button.hidden = true;
+      }
+      return;
+    }
+
+    button.hidden = false;
+    updateSoundControl(false);
+    button.addEventListener("click", enableAudio);
   }
 
   function getRoutineForDay(config, day) {
@@ -580,6 +813,7 @@
       var time = getTime();
       var schedule = chooseSchedule(config, time.day, time.seconds, query.routine);
       setText("current-date", formatDate(new Date()));
+      handleSoundAlerts(schedule, time.seconds, config.sounds);
       if (schedule) {
         render(schedule, time);
       } else {
@@ -587,6 +821,7 @@
       }
     }
 
+  setupSoundControl(config.sounds);
     update();
     window.setInterval(update, SECOND);
     startWeather(config.weather);
@@ -604,6 +839,13 @@
     fetchWeather: fetchWeather,
     renderWeather: renderWeather,
     startWeather: startWeather,
+    initAudio: initAudio,
+    enableAudio: enableAudio,
+    playBeep: playBeep,
+    playBeepPattern: playBeepPattern,
+    handleSoundAlerts: handleSoundAlerts,
+    resetSoundAlertState: resetSoundAlertState,
+    setupSoundControl: setupSoundControl,
     buildSchedule: buildSchedule,
     getViewState: getViewState,
     chooseSchedule: chooseSchedule,

@@ -92,6 +92,28 @@ body {
   white-space: nowrap;
 }
 
+.sound-toggle {
+  margin-top: 5px;
+  padding: 3px 0;
+  border: 0;
+  color: #738090;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.sound-toggle.is-active {
+  color: #397058;
+}
+
+.sound-toggle:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
 .current-task {
   display: flex;
   flex: 1 1 auto;
@@ -328,6 +350,11 @@ h1 {
     font-size: 18px;
   }
 
+  .sound-toggle {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+
   .current-task {
     min-height: 330px;
     padding-right: 8px;
@@ -397,6 +424,11 @@ h1 {
   .weather {
     margin-top: 3px;
     font-size: 16px;
+  }
+
+  .sound-toggle {
+    margin-top: 2px;
+    font-size: 11px;
   }
 
   .current-task {

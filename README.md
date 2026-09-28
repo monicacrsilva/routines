@@ -41,6 +41,22 @@ As coordenadas iniciais correspondem a Lisboa. Altere `latitude` e `longitude` p
 
 Os dados são atualizados segundo `refreshMinutes` e o último resultado válido é mantido em memória enquanto a página estiver aberta. Se a rede ou a API falhar antes de existir um resultado válido, apenas a meteorologia fica escondida; o painel continua a funcionar normalmente.
 
+## Alertas sonoros
+
+A secção `sounds` de `config.js` controla os alertas de aviso, urgência, mudança de etapa e hora de saída. Cada padrão permite definir `enabled`, `beeps`, `frequency`, `durationMs` e `gapMs`; os alertas de aviso e urgência também usam `minutesBeforeEnd`. `volume` define o volume geral entre `0` e `1`.
+
+No Safari do iPad, toque em **🔊 Ativar som** depois de abrir a página. O browser exige esta interação antes de permitir áudio. A autorização dura enquanto a página permanecer aberta; se a página for fechada ou recarregada, poderá ser necessário ativar novamente.
+
+Para esconder o controlo e impedir a criação do `AudioContext` e toda a lógica de alertas, use:
+
+```js
+sounds: {
+  enabled: false
+}
+```
+
+Os alertas tocam uma única vez ao atravessar cada limiar. Abrir ou recarregar a página a meio de uma etapa não produz imediatamente sons relativos a eventos passados.
+
 ## Alterar a hora de saída
 
 Edite `referenceTime` em `config.js`:

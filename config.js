@@ -5,6 +5,40 @@ window.ROUTINE_CONFIG = {
     longitude: -9.1393,
     refreshMinutes: 10
   },
+  sounds: {
+    enabled: true,
+    volume: 0.25,
+    warning: {
+      enabled: true,
+      minutesBeforeEnd: 5,
+      beeps: 1,
+      frequency: 650,
+      durationMs: 160,
+      gapMs: 120
+    },
+    urgent: {
+      enabled: true,
+      minutesBeforeEnd: 2,
+      beeps: 2,
+      frequency: 850,
+      durationMs: 180,
+      gapMs: 140
+    },
+    stepChange: {
+      enabled: true,
+      beeps: 1,
+      frequency: 750,
+      durationMs: 220,
+      gapMs: 120
+    },
+    leaveTime: {
+      enabled: true,
+      beeps: 3,
+      frequency: 1000,
+      durationMs: 250,
+      gapMs: 180
+    }
+  },
   routines: [
     {
       id: "manha-escola",
