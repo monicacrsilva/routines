@@ -82,7 +82,7 @@ body {
 
 .weather {
   margin-top: 5px;
-  color: #526170;
+  color: var(--clock);
   font-size: 30px;
   font-weight: 650;
   white-space: nowrap;
