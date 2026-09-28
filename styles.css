@@ -1,0 +1,406 @@
+:root {
+  --blue: #1672d4;
+  --blue-soft: #e7f2ff;
+  --ink: #17212b;
+  --muted: #677485;
+  --line: #d9e0e8;
+  --surface: #ffffff;
+  --background: #f7f9fc;
+  --warning: #9a6500;
+  --warning-soft: #fff2bc;
+  --urgent: #ba2636;
+  --urgent-soft: #ffe4e6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--ink);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: max(20px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+  background-color: var(--background);
+  background-image: linear-gradient(180deg, #ffffff 0%, #f7f9fc 72%);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 86px;
+}
+
+.clock-heading {
+  display: flex;
+  flex-direction: column;
+}
+
+.current-time {
+  color: var(--ink);
+  font-size: 64px;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.current-date {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.status-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--muted);
+}
+
+.weather {
+  margin-top: 5px;
+  color: #526170;
+  font-size: 18px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.routine-name {
+  font-size: 24px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.current-task {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 315px;
+  margin-top: 16px;
+  padding: 8px 16px 18px;
+  text-align: center;
+}
+
+.test-indicator {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-icon {
+  height: 86px;
+  font-size: 72px;
+  line-height: 1;
+}
+
+h1 {
+  max-width: 920px;
+  margin: 8px 0 18px;
+  color: var(--blue);
+  font-size: 58px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.counter-label {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.countdown {
+  min-width: 260px;
+  color: var(--ink);
+  font-size: 92px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.routine-path {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.timeline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline::before {
+  position: absolute;
+  top: 31px;
+  right: 7%;
+  left: 7%;
+  height: 3px;
+  background: var(--line);
+  content: "";
+}
+
+.timeline-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.timeline-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 30px;
+}
+
+.timeline-label {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 48px;
+  max-width: 130px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.timeline-time {
+  margin-top: 3px;
+  color: #8793a1;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-step.is-current {
+  color: var(--blue);
+}
+
+.timeline-step.is-current .timeline-icon {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 5px rgba(22, 114, 212, 0.12);
+}
+
+.timeline-step.is-current .timeline-time {
+  color: var(--blue);
+}
+
+.timeline-milestone {
+  color: #657383;
+}
+
+.timeline-step:not(.timeline-milestone) + .timeline-milestone {
+  margin-left: 16px;
+}
+
+.timeline-milestone .timeline-icon {
+  border-style: dashed;
+  border-color: #aebbc8;
+  background: var(--surface);
+  font-size: 29px;
+}
+
+.timeline-milestone .timeline-label {
+  font-weight: 700;
+}
+
+.timeline-milestone .timeline-time {
+  color: #6f7c8a;
+  font-weight: 650;
+}
+
+.tone-warning .current-task {
+  background: var(--warning-soft);
+  border-radius: 8px;
+}
+
+.tone-warning h1,
+.tone-warning .countdown {
+  color: var(--warning);
+}
+
+.tone-urgent .current-task {
+  background: var(--urgent-soft);
+  border-radius: 8px;
+}
+
+.tone-urgent h1,
+.tone-urgent .counter-label,
+.tone-urgent .countdown {
+  color: var(--urgent);
+}
+
+.state-before h1,
+.state-idle h1 {
+  color: var(--muted);
+}
+
+.state-leave h1,
+.state-overdue h1,
+.state-leave .countdown,
+.state-overdue .countdown {
+  color: var(--urgent);
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .topbar {
+    min-height: 56px;
+  }
+
+  .current-time {
+    font-size: 42px;
+  }
+
+  .current-date {
+    max-width: 190px;
+    font-size: 13px;
+  }
+
+  .status-heading {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .weather {
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .routine-name {
+    font-size: 18px;
+  }
+
+  .current-task {
+    min-height: 330px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .task-icon {
+    height: 64px;
+    font-size: 54px;
+  }
+
+  h1 {
+    margin-bottom: 14px;
+    font-size: 38px;
+  }
+
+  .countdown {
+    min-width: 0;
+    font-size: 68px;
+  }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px 6px;
+  }
+
+  .timeline::before {
+    display: none;
+  }
+
+  .timeline-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 25px;
+  }
+
+  .timeline-label {
+    min-height: 42px;
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 650px) and (orientation: landscape) {
+  .app-shell {
+    padding-top: 12px;
+    padding-bottom: 10px;
+  }
+
+  .topbar {
+    min-height: 58px;
+  }
+
+  .current-time {
+    font-size: 46px;
+  }
+
+  .current-task {
+    min-height: 230px;
+    padding-bottom: 8px;
+  }
+
+  .task-icon {
+    height: 58px;
+    font-size: 52px;
+  }
+
+  h1 {
+    margin: 3px 0 8px;
+    font-size: 42px;
+  }
+
+  .countdown {
+    font-size: 66px;
+  }
+
+  .timeline-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 25px;
+  }
+
+  .timeline::before {
+    top: 25px;
+  }
+}

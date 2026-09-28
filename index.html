@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f9fc">
+  <title>Painel de rotinas</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="clock-heading">
+        <time id="current-time" class="current-time">--:--</time>
+        <time id="current-date" class="current-date"></time>
+      </div>
+      <div class="status-heading">
+        <span id="routine-name" class="routine-name"></span>
+        <span id="weather" class="weather" hidden></span>
+      </div>
+    </header>
+
+    <main class="current-task" aria-live="polite">
+      <span id="test-indicator" class="test-indicator" hidden>MODO DE TESTE</span>
+      <div id="task-icon" class="task-icon" aria-hidden="true">☀️</div>
+      <h1 id="task-name">A CARREGAR</h1>
+      <p id="counter-label" class="counter-label">TEMPO RESTANTE</p>
+      <div id="countdown" class="countdown">--:--</div>
+    </main>
+
+    <nav class="routine-path" aria-label="Etapas da rotina">
+      <ol id="timeline" class="timeline"></ol>
+    </nav>
+  </div>
+</body>
+</html>
