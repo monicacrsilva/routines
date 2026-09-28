@@ -1,6 +1,8 @@
 :root {
   --blue: #1672d4;
   --blue-soft: #e7f2ff;
+  --clock: #155e75;
+  --remaining: #2f7d55;
   --ink: #17212b;
   --muted: #677485;
   --line: #d9e0e8;
@@ -56,7 +58,7 @@ body {
 }
 
 .current-time {
-  color: var(--ink);
+  color: var(--clock);
   font-size: 64px;
   font-weight: 750;
   line-height: 1;
@@ -81,14 +83,8 @@ body {
 .weather {
   margin-top: 5px;
   color: #526170;
-  font-size: 18px;
+  font-size: 30px;
   font-weight: 650;
-  white-space: nowrap;
-}
-
-.routine-name {
-  font-size: 24px;
-  font-weight: 750;
   white-space: nowrap;
 }
 
@@ -126,7 +122,7 @@ body {
   text-align: center;
 }
 
-.test-indicator {
+.routine-indicator {
   margin-bottom: 4px;
   color: var(--muted);
   font-size: 12px;
@@ -162,6 +158,10 @@ h1 {
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.state-active .countdown {
+  color: var(--remaining);
 }
 
 .routine-path {
@@ -343,11 +343,7 @@ h1 {
 
   .weather {
     margin-top: 4px;
-    font-size: 14px;
-  }
-
-  .routine-name {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .sound-toggle {
@@ -417,13 +413,9 @@ h1 {
     font-size: 14px;
   }
 
-  .routine-name {
-    font-size: 20px;
-  }
-
   .weather {
     margin-top: 3px;
-    font-size: 16px;
+    font-size: 24px;
   }
 
   .sound-toggle {
@@ -438,7 +430,7 @@ h1 {
     padding: 6px 14px 10px;
   }
 
-  .test-indicator {
+  .routine-indicator {
     margin-bottom: 2px;
     font-size: 11px;
   }

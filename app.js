@@ -758,13 +758,12 @@
   function renderNoRoutine(time, nextSchedule) {
     document.body.className = "state-idle";
     setText("current-time", formatClock(time.seconds));
-    setText("routine-name", "");
     setText("task-icon", "");
     setText("task-name", "SEM ROTINA ATIVA");
     setText("counter-label", nextSchedule ? "PRÓXIMA ROTINA" : "");
     setText("countdown", formatNextSchedule(nextSchedule));
     document.getElementById("timeline").innerHTML = "";
-    document.getElementById("test-indicator").hidden = true;
+    document.getElementById("routine-indicator").hidden = true;
   }
 
   function render(schedule, time) {
@@ -779,7 +778,7 @@
     document.body.className = bodyClass;
 
     setText("current-time", formatClock(time.seconds));
-    setText("routine-name", schedule.routine.name);
+  setText("routine-indicator", schedule.routine.name + (time.simulated ? " · TESTE" : ""));
 
     if (state.mode === "before") {
       setText("task-icon", schedule.routine.icon || "☀️");
@@ -801,7 +800,7 @@
     }
 
     renderTimeline(schedule, state.activeIndex);
-    document.getElementById("test-indicator").hidden = !time.simulated;
+    document.getElementById("routine-indicator").hidden = false;
   }
 
   function start() {

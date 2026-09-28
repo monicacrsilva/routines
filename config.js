@@ -60,7 +60,7 @@ window.ROUTINE_CONFIG = {
           text: "ACORDAR E PREPARAR",
           shortText: "Acordar",
           icon: "☀️",
-          durationMinutes: 10
+          durationMinutes: 5
         },
         {
           id: "breakfast",
@@ -71,10 +71,10 @@ window.ROUTINE_CONFIG = {
         },
         {
           id: "teeth-wc",
-          text: "DENTES + WC",
-          shortText: "Dentes + WC",
-          icon: "🦷",
-          durationMinutes: 5
+          text: "WC + DENTES",
+          shortText: "WC + Dentes",
+          icon: "🚿",
+          durationMinutes: 15
         },
         {
           id: "dress",
@@ -125,7 +125,7 @@ window.ROUTINE_CONFIG = {
           text: "ACORDAR E PREPARAR",
           shortText: "Acordar",
           icon: "☀️",
-          durationMinutes: 10
+          durationMinutes: 5
         },
         {
           id: "breakfast",
@@ -136,10 +136,10 @@ window.ROUTINE_CONFIG = {
         },
         {
           id: "teeth-wc",
-          text: "DENTES + WC",
-          shortText: "Dentes + WC",
-          icon: "🦷",
-          durationMinutes: 5
+          text: "WC + DENTES",
+          shortText: "WC + Dentes",
+          icon: "🚿",
+          durationMinutes: 15
         },
         {
           id: "dress",
@@ -190,7 +190,7 @@ window.ROUTINE_CONFIG = {
           text: "ACORDAR E PREPARAR",
           shortText: "Acordar",
           icon: "☀️",
-          durationMinutes: 10
+          durationMinutes: 5
         },
         {
           id: "breakfast",
@@ -201,10 +201,10 @@ window.ROUTINE_CONFIG = {
         },
         {
           id: "teeth-wc",
-          text: "DENTES + WC",
-          shortText: "Dentes + WC",
-          icon: "🦷",
-          durationMinutes: 5
+          text: "WC + DENTES",
+          shortText: "WC + Dentes",
+          icon: "🚿",
+          durationMinutes: 15
         },
         {
           id: "dress",
