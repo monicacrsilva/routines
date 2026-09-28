@@ -39,7 +39,7 @@ window.ROUTINE_CONFIG = {
           id: "teeth-wc",
           text: "DENTES + WC",
           shortText: "Dentes + WC",
-          icon: "🪥",
+          icon: "🦷",
           durationMinutes: 5
         },
         {
