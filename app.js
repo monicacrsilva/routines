@@ -3,20 +3,56 @@
 
   var SECOND = 1000;
   var MINUTE_SECONDS = 60;
+  var DAY_SECONDS = 24 * 60 * 60;
+  var DEFAULT_LABELS = {
+    notStarted: "AINDA NÃO COMEÇOU",
+    startsAt: "COMEÇA ÀS",
+    timeRemaining: "TEMPO RESTANTE",
+    urgent: "DESPACHA-TE",
+    overdue: "JÁ DEVÍAMOS TER SAÍDO",
+    delay: "ATRASO",
+    time: "HORA",
+    next: "Próximo",
+    nextTomorrow: "Próximo amanhã",
+    soundEnable: "🔊 Ativar som",
+    soundActive: "🔊 Som ativo",
+    morningGreeting: "Bom dia",
+    afternoonGreeting: "Boa tarde",
+    eveningGreeting: "Boa noite",
+    test: "TESTE",
+    from: "A partir das",
+    rangeSeparator: "às",
+    currentLocation: "Localização atual",
+    feelsLike: "sensação",
+    weatherClear: "Céu limpo",
+    weatherPartlyCloudy: "Parcialmente nublado",
+    weatherCloudy: "Nublado",
+    weatherFog: "Nevoeiro",
+    weatherThunderstorm: "Trovoada",
+    weatherRain: "Chuva"
+  };
   var lastWeather = null;
+  var lastWeatherLocation = "";
   var audioContext = null;
   var audioAuthorized = false;
   var soundConfig = null;
+  var invalidPhaseWarnings = {};
   var soundAlertState = {
     initialized: false,
-    routineId: "",
+    phaseId: "",
     stepId: "",
     mode: "",
     previousRemaining: null,
     warningFired: false,
-    urgentFired: false,
-    leaveFired: false
+    urgentFired: false
   };
+
+  function getLabel(name) {
+    var config = window.ROUTINE_CONFIG;
+    var labels = config && config.labels;
+
+    return labels && typeof labels[name] === "string" ? labels[name] : DEFAULT_LABELS[name];
+  }
 
   function parseTime(value) {
     var match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value || "");
@@ -82,24 +118,24 @@
 
   function interpretWeatherCode(code) {
     if (code === 0) {
-      return { icon: "☀️", label: "Céu limpo" };
+      return { icon: "☀️", label: getLabel("weatherClear") };
     }
     if (code === 1 || code === 2) {
-      return { icon: "🌤️", label: "Parcialmente nublado" };
+      return { icon: "🌤️", label: getLabel("weatherPartlyCloudy") };
     }
     if (code === 3) {
-      return { icon: "☁️", label: "Nublado" };
+      return { icon: "☁️", label: getLabel("weatherCloudy") };
     }
     if (code === 45 || code === 48) {
-      return { icon: "🌫️", label: "Nevoeiro" };
+      return { icon: "🌫️", label: getLabel("weatherFog") };
     }
     if (code >= 95) {
-      return { icon: "⛈️", label: "Trovoada" };
+      return { icon: "⛈️", label: getLabel("weatherThunderstorm") };
     }
     if (code >= 51 && code <= 86) {
-      return { icon: "🌧️", label: "Chuva" };
+      return { icon: "🌧️", label: getLabel("weatherRain") };
     }
-    return { icon: "☁️", label: "Nublado" };
+    return { icon: "☁️", label: getLabel("weatherCloudy") };
   }
 
   function parseWeatherResponse(payload) {
@@ -130,30 +166,40 @@
     };
   }
 
-  function formatWeather(weather) {
+  function formatWeather(weather, weatherConfig) {
+    weatherConfig = weatherConfig || (window.ROUTINE_CONFIG && window.ROUTINE_CONFIG.weather);
     var condition = interpretWeatherCode(weather.weatherCode);
+    var precipitationThreshold = Number(weatherConfig && weatherConfig.precipitationThreshold);
+    var apparentTemperatureDifference = Number(weatherConfig && weatherConfig.apparentTemperatureDifference);
     var text = condition.icon + " " + Math.round(weather.temperature) + " °C";
 
-    if (weather.precipitation >= 0.1 || condition.label === "Chuva" || condition.label === "Trovoada") {
+    precipitationThreshold = isFinite(precipitationThreshold) ? precipitationThreshold : 0.1;
+    apparentTemperatureDifference = isFinite(apparentTemperatureDifference) ? apparentTemperatureDifference : 3;
+    if (weather.precipitation >= precipitationThreshold || condition.label === getLabel("weatherRain") || condition.label === getLabel("weatherThunderstorm")) {
       text += " · " + condition.label;
     }
-    if (Math.abs(weather.apparentTemperature - weather.temperature) >= 3) {
-      text += " · sensação " + Math.round(weather.apparentTemperature) + " °C";
+    if (Math.abs(weather.apparentTemperature - weather.temperature) >= apparentTemperatureDifference) {
+      text += " · " + getLabel("feelsLike") + " " + Math.round(weather.apparentTemperature) + " °C";
     }
     return text;
   }
 
-  function renderWeather(weather) {
+  function renderWeather(weather, locationLabel, weatherConfig) {
     var element = document.getElementById("weather");
+    var locationElement = document.getElementById("weather-location");
 
     if (!weather) {
       element.textContent = "";
       element.hidden = true;
+      locationElement.textContent = "";
+      locationElement.hidden = true;
       return;
     }
 
-    element.textContent = formatWeather(weather);
+    element.textContent = formatWeather(weather, weatherConfig);
     element.hidden = false;
+    locationElement.textContent = locationLabel ? "📍 " + locationLabel : "";
+    locationElement.hidden = !locationLabel;
   }
 
   function fetchWeather(weatherConfig) {
@@ -196,36 +242,61 @@
         }
         if (parsed) {
           lastWeather = parsed;
-          renderWeather(parsed);
+          lastWeatherLocation = weatherConfig.locationLabel || "";
+          renderWeather(parsed, lastWeatherLocation, weatherConfig);
           return;
         }
       }
-      renderWeather(lastWeather);
+      renderWeather(lastWeather, lastWeatherLocation, weatherConfig);
     };
     request.onerror = function () {
-      renderWeather(lastWeather);
+      renderWeather(lastWeather, lastWeatherLocation, weatherConfig);
     };
     request.ontimeout = function () {
-      renderWeather(lastWeather);
+      renderWeather(lastWeather, lastWeatherLocation, weatherConfig);
     };
     request.send();
   }
 
   function startWeather(weatherConfig) {
     var refreshMinutes;
+    var activeWeatherConfig = weatherConfig;
 
     if (!weatherConfig || weatherConfig.enabled !== true) {
       renderWeather(null);
       return null;
     }
 
-    fetchWeather(weatherConfig);
+    fetchWeather(activeWeatherConfig);
+    if (weatherConfig.useCurrentLocation === true && navigator.geolocation && typeof navigator.geolocation.getCurrentPosition === "function") {
+      navigator.geolocation.getCurrentPosition(function (position) {
+        var locationConfig = {};
+        var property;
+
+        for (property in weatherConfig) {
+          if (Object.prototype.hasOwnProperty.call(weatherConfig, property)) {
+            locationConfig[property] = weatherConfig[property];
+          }
+        }
+        locationConfig.latitude = position.coords.latitude;
+        locationConfig.longitude = position.coords.longitude;
+        locationConfig.locationLabel = getLabel("currentLocation");
+        activeWeatherConfig = locationConfig;
+        fetchWeather(activeWeatherConfig);
+      }, function () {
+        activeWeatherConfig = weatherConfig;
+      }, {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 30 * 60 * 1000
+      });
+    }
     refreshMinutes = Number(weatherConfig.refreshMinutes);
     if (!isFinite(refreshMinutes) || refreshMinutes <= 0) {
       refreshMinutes = 10;
     }
     return window.setInterval(function () {
-      fetchWeather(weatherConfig);
+      fetchWeather(activeWeatherConfig);
     }, refreshMinutes * MINUTE_SECONDS * SECOND);
   }
 
@@ -256,7 +327,7 @@
     if (!button) {
       return;
     }
-    button.textContent = active ? "🔊 Som ativo" : "🔊 Ativar som";
+    button.textContent = active ? getLabel("soundActive") : getLabel("soundEnable");
     button.setAttribute("aria-pressed", active ? "true" : "false");
     button.className = "sound-toggle" + (active ? " is-active" : "");
   }
@@ -353,52 +424,54 @@
 
   function resetSoundAlertState() {
     soundAlertState.initialized = false;
-    soundAlertState.routineId = "";
+    soundAlertState.phaseId = "";
     soundAlertState.stepId = "";
     soundAlertState.mode = "";
     soundAlertState.previousRemaining = null;
     soundAlertState.warningFired = false;
     soundAlertState.urgentFired = false;
-    soundAlertState.leaveFired = false;
   }
 
   function handleSoundAlerts(schedule, nowSeconds, sounds) {
     var state;
-    var routineId;
+    var phaseId;
     var stepId;
     var warningSeconds;
     var urgentSeconds;
     var sameStep;
+    var pressureDisabled;
+    var startAlert;
 
     if (!sounds || sounds.enabled !== true) {
       return;
     }
-    if (!schedule) {
+    if (!schedule || schedule.phase.displayMode !== "sequence") {
       resetSoundAlertState();
       return;
     }
 
     state = getViewState(schedule, nowSeconds);
-    routineId = schedule.routine.id;
+    phaseId = schedule.phase.id;
     stepId = state.mode === "active" ? state.step.id : "";
+    pressureDisabled = state.mode === "active" && state.step.pressureMode === "none";
 
-    if (!soundAlertState.initialized || soundAlertState.routineId !== routineId) {
+    if (!soundAlertState.initialized || soundAlertState.phaseId !== phaseId) {
       resetSoundAlertState();
       soundAlertState.initialized = true;
-      soundAlertState.routineId = routineId;
+      soundAlertState.phaseId = phaseId;
       soundAlertState.stepId = stepId;
       soundAlertState.mode = state.mode;
       soundAlertState.previousRemaining = state.mode === "active" ? state.remainingSeconds : null;
-      soundAlertState.warningFired = state.mode === "active" && state.remainingSeconds <= Number(sounds.warning.minutesBeforeEnd) * MINUTE_SECONDS;
-      soundAlertState.urgentFired = state.mode === "active" && state.remainingSeconds <= Number(sounds.urgent.minutesBeforeEnd) * MINUTE_SECONDS;
-      soundAlertState.leaveFired = state.mode === "leave" || state.mode === "overdue";
+      soundAlertState.warningFired = pressureDisabled || (state.mode === "active" && state.remainingSeconds <= schedule.settings.warningMinutes * MINUTE_SECONDS);
+      soundAlertState.urgentFired = pressureDisabled || (state.mode === "active" && state.remainingSeconds <= schedule.settings.urgentMinutes * MINUTE_SECONDS);
       return;
     }
 
     sameStep = state.mode === "active" && soundAlertState.mode === "active" && soundAlertState.stepId === stepId;
     if (state.mode === "active" && !sameStep) {
       if (soundAlertState.mode === "active" && soundAlertState.stepId !== stepId) {
-        playBeepPattern(sounds.stepChange);
+        startAlert = state.step.startSound && sounds[state.step.startSound];
+        playBeepPattern(startAlert || sounds.stepChange);
       }
       soundAlertState.warningFired = false;
       soundAlertState.urgentFired = false;
@@ -406,8 +479,12 @@
     }
 
     if (state.mode === "active") {
-      warningSeconds = Number(sounds.warning.minutesBeforeEnd) * MINUTE_SECONDS;
-      urgentSeconds = Number(sounds.urgent.minutesBeforeEnd) * MINUTE_SECONDS;
+      if (pressureDisabled) {
+        soundAlertState.warningFired = true;
+        soundAlertState.urgentFired = true;
+      }
+      warningSeconds = schedule.settings.warningMinutes * MINUTE_SECONDS;
+      urgentSeconds = schedule.settings.urgentMinutes * MINUTE_SECONDS;
       if (!soundAlertState.warningFired && sounds.warning.enabled === true &&
           (soundAlertState.previousRemaining === null || soundAlertState.previousRemaining > warningSeconds) &&
           state.remainingSeconds <= warningSeconds) {
@@ -423,12 +500,7 @@
       soundAlertState.previousRemaining = state.remainingSeconds;
     }
 
-    if (state.mode === "leave" && !soundAlertState.leaveFired) {
-      playBeepPattern(sounds.leaveTime);
-      soundAlertState.leaveFired = true;
-    }
-
-    soundAlertState.routineId = routineId;
+    soundAlertState.phaseId = phaseId;
     soundAlertState.stepId = stepId;
     soundAlertState.mode = state.mode;
   }
@@ -449,58 +521,149 @@
     button.addEventListener("click", enableAudio);
   }
 
-  function getRoutineForDay(config, day) {
-    var routines = config && config.routines ? config.routines : [];
+  function getPhasesForDay(config, day) {
+    var phases = config && config.dayPhases ? config.dayPhases : [];
     var matches = [];
     var index;
 
-    for (index = 0; index < routines.length; index += 1) {
-      if (routines[index].days.indexOf(day) !== -1) {
-        matches.push(routines[index]);
+    for (index = 0; index < phases.length; index += 1) {
+      if (phases[index] && phases[index].enabled !== false && phases[index].days && phases[index].days.indexOf(day) !== -1) {
+        matches.push(phases[index]);
       }
     }
 
     return matches;
   }
 
-  function getDaySettings(routine, day) {
-    var override = routine.dayOverrides && routine.dayOverrides[String(day)];
+  function getPhaseSettings(phase, day) {
+    var override = phase.dayOverrides && phase.dayOverrides[String(day)];
     return {
-      referenceTime: override && override.referenceTime ? override.referenceTime : routine.referenceTime,
-      warningMinutes: override && typeof override.warningMinutes === "number" ? override.warningMinutes : routine.warningMinutes,
-      urgentMinutes: override && typeof override.urgentMinutes === "number" ? override.urgentMinutes : routine.urgentMinutes,
-      gracePeriodMinutes: override && typeof override.gracePeriodMinutes === "number" ? override.gracePeriodMinutes : (typeof routine.gracePeriodMinutes === "number" ? routine.gracePeriodMinutes : 0)
+      referenceTime: override && override.referenceTime ? override.referenceTime : phase.referenceTime,
+      startTime: override && override.startTime ? override.startTime : phase.startTime,
+      endTime: override && override.endTime ? override.endTime : phase.endTime,
+      stepOverrides: override && override.stepOverrides ? override.stepOverrides : {},
+      warningMinutes: override && typeof override.warningMinutes === "number" ? override.warningMinutes : (typeof phase.warningMinutes === "number" ? phase.warningMinutes : 5),
+      urgentMinutes: override && typeof override.urgentMinutes === "number" ? override.urgentMinutes : (typeof phase.urgentMinutes === "number" ? phase.urgentMinutes : 2),
+      gracePeriodMinutes: override && typeof override.gracePeriodMinutes === "number" ? override.gracePeriodMinutes : (typeof phase.gracePeriodMinutes === "number" ? phase.gracePeriodMinutes : 0)
     };
   }
 
-  function buildSchedule(routine, day) {
-    var settings = getDaySettings(routine, day);
-    var referenceSeconds = parseTime(settings.referenceTime);
+  function warnInvalidPhase(phase, reason) {
+    var warningKey = (phase.id || "sem id") + ":" + reason;
+
+    if (!invalidPhaseWarnings[warningKey] && window.console && typeof window.console.warn === "function") {
+      invalidPhaseWarnings[warningKey] = true;
+      window.console.warn("Fase ignorada (" + (phase.id || "sem id") + "): " + reason);
+    }
+  }
+
+  function buildPhaseSchedule(phase, day) {
+    var settings = getPhaseSettings(phase, day);
+    var displayMode = phase.displayMode;
+    var effectiveSteps = [];
+    var referenceSeconds;
     var totalDuration = 0;
     var startSeconds;
+    var endSeconds;
     var cursor;
     var scheduledSteps = [];
     var index;
+    var property;
+    var step;
+    var stepOverride;
     var durationSeconds;
 
+    if (displayMode === "passive") {
+      startSeconds = parseTime(settings.startTime);
+      if (startSeconds === null) {
+        warnInvalidPhase(phase, "hora passiva inválida");
+        return null;
+      }
+      if (!settings.endTime) {
+        warnInvalidPhase(phase, "endTime em falta");
+        return {
+          phase: phase,
+          settings: settings,
+          steps: [],
+          startSeconds: startSeconds,
+          endSeconds: null,
+          complete: false
+        };
+      }
+      endSeconds = parseTime(settings.endTime);
+      if (endSeconds === null) {
+        warnInvalidPhase(phase, "endTime inválido");
+        return null;
+      }
+      if (settings.endTime && endSeconds <= startSeconds) {
+        endSeconds += 24 * 60 * 60;
+      }
+      return {
+        phase: phase,
+        settings: settings,
+        steps: [],
+        startSeconds: startSeconds,
+        endSeconds: endSeconds,
+        complete: true
+      };
+    }
+
+    if (displayMode !== "sequence" || !phase.steps || phase.steps.length === 0) {
+      warnInvalidPhase(phase, "displayMode ou steps inválidos");
+      return null;
+    }
+    referenceSeconds = parseTime(settings.referenceTime);
     if (referenceSeconds === null) {
-      throw new Error("Hora de referência inválida na rotina " + routine.id);
+      warnInvalidPhase(phase, "referenceTime inválido");
+      return null;
     }
 
-    for (index = 0; index < routine.steps.length; index += 1) {
-      totalDuration += routine.steps[index].durationMinutes * MINUTE_SECONDS;
+    for (index = 0; index < phase.steps.length; index += 1) {
+      step = {};
+      for (property in phase.steps[index]) {
+        if (Object.prototype.hasOwnProperty.call(phase.steps[index], property)) {
+          step[property] = phase.steps[index][property];
+        }
+      }
+      stepOverride = settings.stepOverrides[phase.steps[index].id];
+      if (stepOverride) {
+        for (property in stepOverride) {
+          if (Object.prototype.hasOwnProperty.call(stepOverride, property)) {
+            step[property] = stepOverride[property];
+          }
+        }
+      }
+      effectiveSteps.push(step);
     }
 
-    startSeconds = routine.anchor === "end" ? referenceSeconds - totalDuration : referenceSeconds;
+    for (index = 0; index < effectiveSteps.length; index += 1) {
+      if (effectiveSteps[index].durationMinutes === null || effectiveSteps[index].durationMinutes === "") {
+        warnInvalidPhase(phase, "durationMinutes em falta");
+        return null;
+      }
+      durationSeconds = Number(effectiveSteps[index].durationMinutes) * MINUTE_SECONDS;
+      if (!isFinite(durationSeconds) || durationSeconds < 0) {
+        warnInvalidPhase(phase, "durationMinutes inválido");
+        return null;
+      }
+      totalDuration += durationSeconds;
+    }
+
+    startSeconds = phase.anchor === "end" ? referenceSeconds - totalDuration : referenceSeconds;
     cursor = startSeconds;
 
-    for (index = 0; index < routine.steps.length; index += 1) {
-      durationSeconds = routine.steps[index].durationMinutes * MINUTE_SECONDS;
+    for (index = 0; index < effectiveSteps.length; index += 1) {
+      step = effectiveSteps[index];
+      durationSeconds = Number(step.durationMinutes) * MINUTE_SECONDS;
       scheduledSteps.push({
-        id: routine.steps[index].id,
-        text: routine.steps[index].text,
-        shortText: routine.steps[index].shortText || routine.steps[index].text,
-        icon: routine.steps[index].icon,
+        id: step.id,
+        text: step.text,
+        shortText: step.shortText || step.text,
+        icon: step.icon,
+        completionText: step.completionText,
+        completionLabel: step.completionLabel,
+        pressureMode: step.pressureMode || "normal",
+        startSound: step.startSound || "",
         startSeconds: cursor,
         endSeconds: cursor + durationSeconds,
         durationSeconds: durationSeconds
@@ -509,18 +672,20 @@
     }
 
     return {
-      routine: routine,
+      phase: phase,
       settings: settings,
       steps: scheduledSteps,
       startSeconds: startSeconds,
-      endSeconds: routine.anchor === "end" ? referenceSeconds : cursor
+      endSeconds: phase.anchor === "end" ? referenceSeconds : cursor
     };
   }
 
-  function chooseSchedule(config, day, nowSeconds) {
-    var routineId = arguments.length > 3 ? arguments[3] : "";
-    var allRoutines = config && config.routines ? config.routines : [];
-    var routines = routineId ? allRoutines : getRoutineForDay(config, day);
+  function getCurrentPhase(config, day, nowSeconds) {
+    var phaseId = arguments.length > 3 ? arguments[3] : "";
+    var allPhases = config && config.dayPhases ? config.dayPhases : [];
+    var phases = phaseId ? allPhases : getPhasesForDay(config, day);
+    var previousPhases = phaseId ? [] : getPhasesForDay(config, (day + 6) % 7);
+    var candidates = [];
     var active = null;
     var overdue = null;
     var activePriority = -Infinity;
@@ -530,18 +695,41 @@
     var priority;
     var graceEndSeconds;
 
-    for (index = 0; index < routines.length; index += 1) {
-      if (routineId && String(routines[index].id).toLowerCase() !== String(routineId).toLowerCase()) {
+    for (index = 0; index < phases.length; index += 1) {
+      if (!phases[index]) {
+        continue;
+      }
+      if (phases[index].enabled === false) {
+        continue;
+      }
+      if (phaseId && String(phases[index].id).toLowerCase() !== String(phaseId).toLowerCase()) {
         continue;
       }
 
-      schedule = buildSchedule(routines[index], day);
-      if (routineId) {
+      schedule = buildPhaseSchedule(phases[index], day);
+      if (!schedule || schedule.complete === false) {
+        continue;
+      }
+      if (phaseId) {
         return schedule;
       }
 
-      priority = typeof routines[index].priority === "number" ? routines[index].priority : 0;
-      graceEndSeconds = schedule.endSeconds + Math.max(0, schedule.settings.gracePeriodMinutes) * MINUTE_SECONDS;
+      candidates.push(schedule);
+    }
+
+    for (index = 0; index < previousPhases.length; index += 1) {
+      schedule = buildPhaseSchedule(previousPhases[index], (day + 6) % 7);
+      if (schedule && schedule.complete !== false && schedule.endSeconds > DAY_SECONDS) {
+        schedule.startSeconds -= DAY_SECONDS;
+        schedule.endSeconds -= DAY_SECONDS;
+        candidates.push(schedule);
+      }
+    }
+
+    for (index = 0; index < candidates.length; index += 1) {
+      schedule = candidates[index];
+      priority = typeof schedule.phase.priority === "number" ? schedule.phase.priority : 0;
+      graceEndSeconds = schedule.phase.displayMode === "sequence" ? schedule.endSeconds + Math.max(0, schedule.settings.gracePeriodMinutes) * MINUTE_SECONDS : schedule.endSeconds;
       if (nowSeconds >= schedule.startSeconds && nowSeconds < schedule.endSeconds && priority > activePriority) {
         active = schedule;
         activePriority = priority;
@@ -554,21 +742,24 @@
     return active || overdue;
   }
 
-  function findNextSchedule(config, day, nowSeconds) {
+  function getNextPhase(config, day, nowSeconds) {
     var next = null;
     var dayOffset;
     var targetDay;
-    var routines;
+    var phases;
     var index;
     var schedule;
     var absoluteStart;
 
     for (dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
       targetDay = (day + dayOffset) % 7;
-      routines = getRoutineForDay(config, targetDay);
+      phases = getPhasesForDay(config, targetDay);
 
-      for (index = 0; index < routines.length; index += 1) {
-        schedule = buildSchedule(routines[index], targetDay);
+      for (index = 0; index < phases.length; index += 1) {
+        schedule = buildPhaseSchedule(phases[index], targetDay);
+        if (!schedule) {
+          continue;
+        }
         absoluteStart = (dayOffset * 24 * 60 * 60) + schedule.startSeconds;
 
         if (absoluteStart > nowSeconds && (!next || absoluteStart < next.absoluteStart)) {
@@ -585,21 +776,79 @@
     return next;
   }
 
-  function formatNextSchedule(next) {
-    var weekdays = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
-    var dayText;
+  function formatIdlePhase(next) {
+    var phaseName;
 
     if (!next) {
       return "";
     }
-    if (next.daysAhead === 0) {
-      dayText = "hoje";
-    } else if (next.daysAhead === 1) {
-      dayText = "amanhã";
-    } else {
-      dayText = weekdays[next.day];
+    phaseName = String(next.schedule.phase.name || "").toLowerCase().replace(/(^| · )([a-záàâãéêíóôõúç])/g, function (match, separator, letter) {
+      return separator + letter.toUpperCase();
+    });
+    return (next.schedule.phase.icon || "") + " " + phaseName + " · " + formatClock(next.schedule.startSeconds);
+  }
+
+  function formatNextPhaseLabel(next) {
+    var weekdays = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+
+    if (!next || next.daysAhead === 0) {
+      return getLabel("next");
     }
-    return dayText + " · " + formatClock(next.schedule.startSeconds);
+    if (next.daysAhead === 1) {
+      return getLabel("nextTomorrow");
+    }
+    return getLabel("next") + " " + weekdays[next.day];
+  }
+
+  function formatGreeting(nowSeconds) {
+    var config = window.ROUTINE_CONFIG;
+    var greetings = config && config.greetings;
+    var morningUntil = parseTime(greetings && greetings.morningUntil);
+    var afternoonUntil = parseTime(greetings && greetings.afternoonUntil);
+
+    morningUntil = morningUntil === null ? 12 * 60 * 60 : morningUntil;
+    afternoonUntil = afternoonUntil === null ? 20 * 60 * 60 : afternoonUntil;
+    if (nowSeconds < morningUntil) {
+      return getLabel("morningGreeting");
+    }
+    if (nowSeconds < afternoonUntil) {
+      return getLabel("afternoonGreeting");
+    }
+    return getLabel("eveningGreeting");
+  }
+
+  function getIdleSettings(idleConfig) {
+    var preRoutineMinutes = idleConfig && Number(idleConfig.preRoutineMinutes);
+
+    return {
+      preRoutineMinutes: isFinite(preRoutineMinutes) ? Math.max(0, preRoutineMinutes) : 30,
+      showNextRoutine: !idleConfig || idleConfig.showNextRoutine !== false
+    };
+  }
+
+  function getIdleState(nextSchedule, nowSeconds, idleConfig) {
+    var settings = getIdleSettings(idleConfig);
+    var secondsUntil = nextSchedule ? nextSchedule.absoluteStart - nowSeconds : Infinity;
+
+    if (nextSchedule && nextSchedule.daysAhead === 0 && secondsUntil <= settings.preRoutineMinutes * MINUTE_SECONDS) {
+      return {
+        mode: "pre",
+        title: formatGreeting(nowSeconds),
+        showNextRoutine: settings.showNextRoutine
+      };
+    }
+    if (nextSchedule && nextSchedule.daysAhead > 0) {
+      return {
+        mode: "end",
+        title: formatGreeting(nowSeconds),
+        showNextRoutine: settings.showNextRoutine
+      };
+    }
+    return {
+      mode: "normal",
+      title: formatGreeting(nowSeconds),
+      showNextRoutine: settings.showNextRoutine
+    };
   }
 
   function getViewState(schedule, nowSeconds) {
@@ -632,7 +881,9 @@
       step = steps[index];
       if (step.durationSeconds > 0 && nowSeconds >= step.startSeconds && nowSeconds < step.endSeconds) {
         remaining = step.endSeconds - nowSeconds;
-        if (remaining <= schedule.settings.urgentMinutes * MINUTE_SECONDS) {
+        if (step.pressureMode === "none") {
+          tone = "normal";
+        } else if (remaining <= schedule.settings.urgentMinutes * MINUTE_SECONDS) {
           tone = "urgent";
         } else if (remaining <= schedule.settings.warningMinutes * MINUTE_SECONDS) {
           tone = "warning";
@@ -669,9 +920,11 @@
   function createTimeSource(query) {
     var simulatedSeconds = parseTime(query.time);
     var startedAt = new Date().getTime();
+    var simulatedDay = query.day && /^[0-6]$/.test(query.day) ? Number(query.day) : null;
 
     return function () {
       var now = new Date();
+      var displayDate = new Date(now.getTime());
       var seconds;
 
       if (simulatedSeconds !== null) {
@@ -680,10 +933,15 @@
         seconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
       }
 
+      if (simulatedDay !== null) {
+        displayDate.setDate(displayDate.getDate() + simulatedDay - displayDate.getDay());
+      }
+
       return {
         seconds: seconds,
-        day: query.day && /^[0-6]$/.test(query.day) ? Number(query.day) : now.getDay(),
-        simulated: simulatedSeconds !== null || Boolean(query.routine)
+        day: simulatedDay !== null ? simulatedDay : now.getDay(),
+        date: displayDate,
+        simulated: simulatedSeconds !== null || simulatedDay !== null || Boolean(query.phase || query.routine)
       };
     };
   }
@@ -692,16 +950,14 @@
     document.getElementById(id).textContent = value;
   }
 
-  function renderTimeline(schedule, activeIndex) {
+  function renderTimeline(schedule, activeIndex, nextPhase) {
     var timeline = document.getElementById("timeline");
     var fragment = document.createDocumentFragment();
-    var milestones = schedule.routine.milestones || [];
     var index;
     var item;
     var marker;
     var label;
     var time;
-    var milestoneTime;
 
     timeline.innerHTML = "";
     for (index = 0; index < schedule.steps.length; index += 1) {
@@ -720,7 +976,7 @@
 
       time = document.createElement("time");
       time.className = "timeline-time";
-      time.textContent = formatClock(index === schedule.steps.length - 1 ? schedule.endSeconds : schedule.steps[index].startSeconds);
+      time.textContent = formatClock(schedule.steps[index].startSeconds);
 
       item.appendChild(marker);
       item.appendChild(label);
@@ -728,24 +984,23 @@
       fragment.appendChild(item);
     }
 
-    for (index = 0; index < milestones.length; index += 1) {
-      milestoneTime = parseTime(milestones[index].time);
+    if (nextPhase) {
       item = document.createElement("li");
-      item.className = "timeline-step timeline-milestone";
+      item.className = "timeline-step timeline-next-phase";
       item.setAttribute("aria-current", "false");
 
       marker = document.createElement("span");
       marker.className = "timeline-icon";
       marker.setAttribute("aria-hidden", "true");
-      marker.textContent = milestones[index].icon;
+      marker.textContent = nextPhase.schedule.phase.icon || "";
 
       label = document.createElement("span");
       label.className = "timeline-label";
-      label.textContent = milestones[index].title || milestones[index].text;
+      label.textContent = nextPhase.schedule.phase.name;
 
       time = document.createElement("time");
       time.className = "timeline-time";
-      time.textContent = milestoneTime === null ? milestones[index].time : formatClock(milestoneTime);
+      time.textContent = formatClock(nextPhase.schedule.startSeconds);
 
       item.appendChild(marker);
       item.appendChild(label);
@@ -755,18 +1010,25 @@
     timeline.appendChild(fragment);
   }
 
-  function renderNoRoutine(time, nextSchedule) {
-    document.body.className = "state-idle";
+  function renderNoRoutine(time, nextSchedule, idleConfig) {
+    var idleState = getIdleState(nextSchedule, time.seconds, idleConfig);
+    var showNextPhase = idleState.showNextRoutine && nextSchedule;
+
+    document.body.className = "state-idle state-idle-" + idleState.mode;
     setText("current-time", formatClock(time.seconds));
     setText("task-icon", "");
-    setText("task-name", "SEM ROTINA ATIVA");
-    setText("counter-label", nextSchedule ? "PRÓXIMA ROTINA" : "");
-    setText("countdown", formatNextSchedule(nextSchedule));
+    setText("task-name", idleState.title);
+    setText("counter-label", "");
+    setText("countdown", "");
+    setText("phase-next-label", showNextPhase ? formatNextPhaseLabel(nextSchedule) : "");
+    setText("phase-next", showNextPhase ? formatIdlePhase(nextSchedule) : "");
+    document.getElementById("phase-next-label").hidden = !showNextPhase;
+    document.getElementById("phase-next").hidden = !showNextPhase;
     document.getElementById("timeline").innerHTML = "";
-    document.getElementById("routine-indicator").hidden = true;
+    document.getElementById("phase-indicator").hidden = true;
   }
 
-  function render(schedule, time) {
+  function renderSequencePhase(schedule, time, nextPhase) {
     var state = getViewState(schedule, time.seconds);
     var bodyClass = "state-" + state.mode;
     var headline;
@@ -778,29 +1040,51 @@
     document.body.className = bodyClass;
 
     setText("current-time", formatClock(time.seconds));
-  setText("routine-indicator", schedule.routine.name + (time.simulated ? " · TESTE" : ""));
+    setText("phase-indicator", schedule.phase.name + (time.simulated ? " · " + getLabel("test") : ""));
 
     if (state.mode === "before") {
-      setText("task-icon", schedule.routine.icon || "☀️");
-      setText("task-name", "AINDA NÃO COMEÇOU");
-      setText("counter-label", "COMEÇA ÀS");
+      setText("task-icon", schedule.phase.icon || "☀️");
+      setText("task-name", getLabel("notStarted"));
+      setText("counter-label", getLabel("startsAt"));
       setText("countdown", formatClock(schedule.startSeconds));
     } else if (state.mode === "active") {
       setText("task-icon", state.step.icon);
       setText("task-name", state.step.text);
-      setText("counter-label", state.tone === "urgent" ? "DESPACHA-TE" : "TEMPO RESTANTE");
+      setText("counter-label", state.tone === "urgent" ? getLabel("urgent") : getLabel("timeRemaining"));
       setText("countdown", formatCountdown(state.remainingSeconds));
     } else {
-      headline = state.mode === "overdue" ? "JÁ DEVÍAMOS TER SAÍDO" : "É HORA DE SAIR";
       detail = schedule.steps[schedule.steps.length - 1];
+      headline = state.mode === "overdue" ? getLabel("overdue") : (detail.completionText || detail.text);
       setText("task-icon", detail.icon);
       setText("task-name", headline);
-      setText("counter-label", state.mode === "overdue" ? "ATRASO" : "SAÍDA");
+      setText("counter-label", state.mode === "overdue" ? getLabel("delay") : (detail.completionLabel || getLabel("time")));
       setText("countdown", state.mode === "overdue" ? formatElapsed(state.elapsedSeconds) : formatClock(schedule.endSeconds));
     }
 
-    renderTimeline(schedule, state.activeIndex);
-    document.getElementById("routine-indicator").hidden = false;
+    renderTimeline(schedule, state.activeIndex, nextPhase);
+    setText("phase-next-label", "");
+    setText("phase-next", "");
+    document.getElementById("phase-next-label").hidden = true;
+    document.getElementById("phase-next").hidden = true;
+    document.getElementById("phase-indicator").hidden = false;
+  }
+
+  function renderPassivePhase(schedule, time, nextPhase) {
+    var hasConfiguredEnd = Boolean(schedule.settings.endTime);
+
+    document.body.className = "state-passive";
+    setText("current-time", formatClock(time.seconds));
+    setText("phase-indicator", time.simulated ? getLabel("test") : "");
+    setText("task-icon", schedule.phase.icon || "");
+    setText("task-name", schedule.phase.name);
+    setText("counter-label", hasConfiguredEnd ? formatClock(schedule.startSeconds) + " " + getLabel("rangeSeparator") + " " + formatClock(schedule.endSeconds) : getLabel("from") + " " + formatClock(schedule.startSeconds));
+    setText("countdown", "");
+    setText("phase-next-label", formatNextPhaseLabel(nextPhase));
+    setText("phase-next", nextPhase ? formatIdlePhase(nextPhase) : "");
+    document.getElementById("phase-next-label").hidden = !nextPhase;
+    document.getElementById("phase-next").hidden = !nextPhase;
+    document.getElementById("timeline").innerHTML = "";
+    document.getElementById("phase-indicator").hidden = !time.simulated;
   }
 
   function start() {
@@ -810,13 +1094,19 @@
 
     function update() {
       var time = getTime();
-      var schedule = chooseSchedule(config, time.day, time.seconds, query.routine);
-      setText("current-date", formatDate(new Date()));
+      var forcedPhase = query.phase || query.routine || "";
+      var schedule = getCurrentPhase(config, time.day, time.seconds, forcedPhase);
+      var nextPhase = getNextPhase(config, time.day, time.seconds);
+      setText("current-date", formatDate(time.date));
       handleSoundAlerts(schedule, time.seconds, config.sounds);
       if (schedule) {
-        render(schedule, time);
+        if (schedule.phase.displayMode === "passive") {
+          renderPassivePhase(schedule, time, nextPhase);
+        } else {
+          renderSequencePhase(schedule, time, nextPhase);
+        }
       } else {
-        renderNoRoutine(time, findNextSchedule(config, time.day, time.seconds));
+        renderNoRoutine(time, nextPhase, config.idle);
       }
     }
 
@@ -845,11 +1135,13 @@
     handleSoundAlerts: handleSoundAlerts,
     resetSoundAlertState: resetSoundAlertState,
     setupSoundControl: setupSoundControl,
-    buildSchedule: buildSchedule,
+    buildPhaseSchedule: buildPhaseSchedule,
     getViewState: getViewState,
-    chooseSchedule: chooseSchedule,
-    findNextSchedule: findNextSchedule,
-    formatNextSchedule: formatNextSchedule
+    getCurrentPhase: getCurrentPhase,
+    getNextPhase: getNextPhase,
+    formatGreeting: formatGreeting,
+    getIdleSettings: getIdleSettings,
+    getIdleState: getIdleState
   };
 
   if (typeof document !== "undefined") {

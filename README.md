@@ -1,6 +1,6 @@
-# Painel de rotinas
+# Painel de fases do dia
 
-Painel visual estático para mostrar a hora, a etapa esperada, o tempo restante e a sequência completa de uma rotina. Funciona diretamente no browser, sem backend, instalação ou dependências.
+Painel visual estático para mostrar a fase atual do dia. Fases `sequence` apresentam etapas e contadores; fases `passive` mostram apenas informação contextual. Funciona diretamente no browser, sem backend, instalação ou dependências.
 
 ## Abrir e testar
 
@@ -8,21 +8,20 @@ Abra `index.html` no Safari ou noutro browser. O painel usa a hora e o dia do di
 
 Pode simular uma hora acrescentando `?time=HH:MM` ao endereço:
 
-- `index.html?time=06:52`
-- `index.html?time=07:07`
-- `index.html?time=07:18`
+- `index.html?time=06:45`
+- `index.html?time=18:15`
+- `index.html?time=20:55`
 
 A hora simulada começa no valor indicado e continua a avançar a cada segundo. Para simular também um dia específico, use `day=0` para domingo até `day=6` para sábado. Por exemplo, `index.html?time=07:20&day=3` testa uma quarta-feira.
 
-A data apresentada usa sempre a data real do dispositivo. Os parâmetros `time` e `day` continuam a afetar apenas o teste da rotina e da hora.
+Com `day`, a data apresentada ajusta-se ao dia escolhido dentro da semana atual. Sem `day`, permanece a data real do dispositivo.
 
-Pode forçar uma rotina pelo respetivo `id`, mesmo fora do dia ou horário configurado:
+Pode forçar uma fase pelo respetivo `id`, mesmo fora do dia ou horário configurado:
 
-- `index.html?routine=manha-escola`
-- `index.html?routine=jantar`
-- `index.html?routine=jantar&time=19:42`
+- `index.html?phase=manha-escola`
+- `index.html?phase=manha-escola-quinta&time=08:05`
 
-O segundo e terceiro exemplos funcionam depois de existir em `config.js` uma rotina com `id: "jantar"`. Um ID inexistente mostra o ecrã neutro.
+Um ID inexistente mostra o ecrã neutro. O parâmetro antigo `routine` continua aceite como alias para não quebrar endereços guardados.
 
 ## Configurar a meteorologia
 
@@ -31,19 +30,27 @@ A secção `weather` de `config.js` controla a meteorologia atual:
 ```js
 weather: {
   enabled: true,
+  useCurrentLocation: true,
+  locationLabel: "Lisboa",
   latitude: 38.7223,
   longitude: -9.1393,
+  precipitationThreshold: 0.1,
+  apparentTemperatureDifference: 3,
   refreshMinutes: 10
 }
 ```
 
-As coordenadas iniciais correspondem a Lisboa. Altere `latitude` e `longitude` para a localização pretendida. Para desligar completamente a funcionalidade e impedir pedidos à Open-Meteo, use `enabled: false`.
+Com `useCurrentLocation: true`, o browser pede autorização para usar a localização atual. Se for autorizada, as coordenadas reais passam a ser usadas nas consultas seguintes e o cabeçalho mostra **Localização atual** entre a temperatura e o controlo de som. As coordenadas configuradas correspondem a Lisboa e funcionam como fallback quando a geolocalização não está disponível, é recusada ou excede o tempo limite; `locationLabel` define o nome apresentado nesse caso. Use `useCurrentLocation: false` para usar sempre as coordenadas configuradas. Para desligar completamente a funcionalidade e impedir pedidos à Open-Meteo, use `enabled: false`.
+
+A geolocalização funciona no GitHub Pages através de HTTPS. Ao abrir diretamente como `file://`, alguns browsers podem bloqueá-la; nesse caso, o fallback continua ativo.
 
 Os dados são atualizados segundo `refreshMinutes` e o último resultado válido é mantido em memória enquanto a página estiver aberta. Se a rede ou a API falhar antes de existir um resultado válido, apenas a meteorologia fica escondida; o painel continua a funcionar normalmente.
 
+`precipitationThreshold` define a precipitação mínima apresentada e `apparentTemperatureDifference` define a diferença mínima para mostrar a sensação térmica.
+
 ## Alertas sonoros
 
-A secção `sounds` de `config.js` controla os alertas de aviso, urgência, mudança de etapa e hora de saída. Cada padrão permite definir `enabled`, `beeps`, `frequency`, `durationMs` e `gapMs`; os alertas de aviso e urgência também usam `minutesBeforeEnd`. `volume` define o volume geral entre `0` e `1`.
+A secção `sounds` de `config.js` controla os alertas de aviso, urgência, mudança de etapa e hora de saída. Cada padrão permite definir `enabled`, `beeps`, `frequency`, `durationMs` e `gapMs`. Os momentos dos alertas usam `warningMinutes` e `urgentMinutes` da phase atual, tal como os estados visuais. `volume` define o volume geral entre `0` e `1`.
 
 No Safari do iPad, toque em **🔊 Ativar som** depois de abrir a página. O browser exige esta interação antes de permitir áudio. A autorização dura enquanto a página permanecer aberta; se a página for fechada ou recarregada, poderá ser necessário ativar novamente.
 
@@ -55,29 +62,34 @@ sounds: {
 }
 ```
 
-Os alertas tocam uma única vez ao atravessar cada limiar. Abrir ou recarregar a página a meio de uma etapa não produz imediatamente sons relativos a eventos passados.
+Os alertas tocam uma única vez ao atravessar cada limiar. Abrir ou recarregar a página a meio de uma etapa não produz imediatamente sons relativos a eventos passados. Uma step pode usar `startSound` com o nome de um padrão definido em `sounds`; caso contrário, a mudança usa `stepChange`. A step `to-school` usa `startSound: "leaveTime"` para o aviso forte de saída de casa.
 
-## Alterar a hora de saída
+## Alterar a hora de referência
 
 Edite `referenceTime` em `config.js`:
 
 ```js
-referenceTime: "07:35"
+referenceTime: "08:00"
 ```
 
-Como a rotina usa `anchor: "end"`, todas as etapas anteriores deslocam-se automaticamente, mantendo as durações.
+Como a fase usa `anchor: "end"`, todas as etapas anteriores deslocam-se automaticamente, mantendo as durações.
 
-Para alterar apenas uma quarta-feira, use a chave `3` em `dayOverrides`:
+Para alterar a referência e uma etapa apenas à quinta-feira, use a chave `4` em `dayOverrides`. `stepOverrides` aceita qualquer `id` de step e substitui apenas as propriedades indicadas:
 
 ```js
 dayOverrides: {
-  "3": { referenceTime: "07:35" }
+  "4": {
+    referenceTime: "08:55",
+    stepOverrides: {
+      "to-school": { durationMinutes: 35 }
+    }
+  }
 }
 ```
 
 ## Alterar durações e avisos
 
-Cada etapa tem `durationMinutes`. O passo final pode ter duração zero porque representa o momento de saída:
+Cada etapa tem `durationMinutes`. O passo final pode ter duração zero quando representa um momento exato, como sair:
 
 ```js
 {
@@ -89,36 +101,42 @@ Cada etapa tem `durationMinutes`. O passo final pode ter duração zero porque r
 }
 ```
 
-`warningMinutes` controla o aviso amarelo e `urgentMinutes` controla o aviso vermelho. `gracePeriodMinutes` mantém a rotina visível no estado “JÁ DEVÍAMOS TER SAÍDO” durante o número de minutos indicado depois da hora de fim.
+`warningMinutes` controla o aviso amarelo e `urgentMinutes` controla o aviso vermelho. Uma etapa com `pressureMode: "none"` continua a mostrar o tempo restante, mas sem estado visual ou som de warning/urgent. `gracePeriodMinutes` mantém a fase `sequence` visível no estado atrasado depois da hora de fim.
 
-No minuto exato da hora final, o painel mostra “É HORA DE SAIR” e mantém essa hora no centro. A partir do minuto seguinte, mostra “JÁ DEVÍAMOS TER SAÍDO” e um contador `ATRASO` crescente. Quando termina `gracePeriodMinutes`, a rotina deixa de estar ativa.
+Durante o minuto da hora final, o painel mostra o step de duração zero e mantém essa hora no centro. Se existir tolerância, a partir do minuto seguinte mostra o estado atrasado e um contador crescente. Quando termina `gracePeriodMinutes`, a fase deixa de estar ativa.
 
-## Adicionar uma rotina
+## Configurar fases
 
-Acrescente outro objeto ao array `window.ROUTINE_CONFIG.routines` em `config.js`. Cada rotina aceita:
+Acrescente objetos ao array `window.ROUTINE_CONFIG.dayPhases` em `config.js`. Todas as fases aceitam:
 
 - `id`: identificador único.
-- `name` e `icon`: título e ícone do cabeçalho.
+- `name` e `icon`: título e ícone da fase.
+- `displayMode`: `"sequence"` ou `"passive"`.
+- `enabled`: use `false` para manter uma fase incompleta na configuração sem a apresentar nem a considerar como próxima fase.
 - `priority`: número opcional usado para resolver sobreposições; o valor mais alto ganha e o valor predefinido é `0`.
 - `days`: dias ativos, de `0` (domingo) a `6` (sábado).
+- `dayOverrides`: alterações opcionais por dia da semana.
+
+Uma fase `sequence` aceita ainda:
+
 - `referenceTime`: hora `HH:MM` usada como referência.
 - `anchor`: `"end"` para calcular para trás ou `"start"` para calcular para a frente.
 - `warningMinutes` e `urgentMinutes`: limites visuais do contador.
 - `gracePeriodMinutes`: tolerância opcional depois do fim; o valor predefinido é `0`.
-- `dayOverrides`: alterações opcionais por dia da semana.
-- `steps`: etapas com `id`, `text`, `shortText`, `icon` e `durationMinutes`.
-- `milestones`: marcos visuais opcionais com `id`, `title`, `icon` e uma `time` independente.
+- `steps`: etapas com `id`, `text`, `shortText`, `icon` e `durationMinutes`; `pressureMode: "none"` é opcional.
+- `dayOverrides[day].stepOverrides`: alterações opcionais às propriedades de qualquer step, identificada pelo respetivo `id`.
 
-Exemplo mínimo de uma rotina com âncora de início:
+Exemplo mínimo de uma fase `sequence` com âncora de início:
 
 ```js
 {
-  id: "jantar",
-  name: "JANTAR",
-  icon: "🍽️",
+  id: "nova-sequencia",
+  name: "NOVA SEQUÊNCIA",
+  icon: "▶️",
+  displayMode: "sequence",
   priority: 5,
   days: [0, 1, 2, 3, 4, 5, 6],
-  referenceTime: "19:30",
+  referenceTime: "HH:MM",
   anchor: "start",
   warningMinutes: 5,
   urgentMinutes: 2,
@@ -126,27 +144,59 @@ Exemplo mínimo de uma rotina com âncora de início:
   dayOverrides: {},
   steps: [
     {
-      id: "dinner-table",
-      text: "JANTAR",
-      shortText: "Jantar",
-      icon: "🍽️",
+      id: "primeira-etapa",
+      text: "PRIMEIRA ETAPA",
+      shortText: "Primeira etapa",
+      icon: "▶️",
       durationMinutes: 30
-    }
-  ],
-  milestones: [
-    {
-      id: "bedtime",
-      title: "Dormir",
-      icon: "🛏️",
-      time: "21:30"
     }
   ]
 }
 ```
 
-As milestones aparecem no fim da timeline pela ordem configurada. Não têm duração, não alteram os horários calculados das etapas e nunca se tornam a tarefa central ou recebem o destaque de etapa atual.
+Uma fase `passive` usa `startTime` e `endTime`. Se `endTime` for `null`, a configuração é considerada incompleta: não se torna ativa automaticamente, mas pode aparecer como próxima fase quando `startTime` for válido. O browser emite apenas um `console.warn`. Uma fase passive não tem steps, timeline, warnings, urgência, grace period ou sons:
 
-Em utilização normal, o painel compara o dia e a hora atual com o início, o fim e a tolerância calculados de todas as rotinas. Durante a tolerância mantém a timeline visível no estado atrasado. Uma rotina realmente em curso tem precedência sobre outra que esteja apenas em tolerância; entre rotinas no mesmo estado, vence a maior `priority`. Depois da tolerância, a rotina desaparece. Fora de qualquer rotina, mostra “SEM ROTINA ATIVA” e indica discretamente o dia e a hora de início da próxima rotina, sem exigir seleção manual.
+```js
+{
+  id: "nova-fase-passiva",
+  name: "NOVA FASE",
+  icon: "ℹ️",
+  displayMode: "passive",
+  priority: 5,
+  days: [1, 2, 3, 4, 5],
+  startTime: "HH:MM",
+  endTime: "HH:MM",
+  dayOverrides: {
+    "3": { startTime: "HH:MM", endTime: "HH:MM" }
+  }
+}
+```
+
+Durante uma fase `sequence`, a próxima dayPhase válida aparece apenas no fim da timeline, com tratamento visual secundário. Durante uma fase `passive` ou no estado idle, aparece no bloco **Próximo** abaixo da informação principal. Se não existir uma próxima fase, nenhum destes elementos é apresentado.
+
+Nos dias úteis, a Manhã inclui a deslocação sem pressão e termina quando começa Escola: `08:00` nos dias normais e `08:55` à quinta-feira. Escola é uma fase passive até às `17:30` e Fim do dia é uma sequência das `18:30` às `22:00`, calculada para trás a partir da hora de dormir. Dormir é uma fase passive autónoma, ativa diariamente das `22:00` às `06:30`, incluindo a passagem da meia-noite. Ao sábado, a Manhã termina com a deslocação sem pressão e Inglês fica ativo das `09:30` às `11:00`.
+
+Em utilização normal, o painel compara o dia e a hora atual com o início, o fim e a tolerância calculados de todas as fases. Durante a tolerância de uma fase `sequence`, mantém a timeline visível no estado atrasado. Uma fase realmente em curso tem precedência sobre outra que esteja apenas em tolerância; entre fases no mesmo estado, vence a maior `priority`.
+
+Fora de uma fase, a secção `idle` controla a apresentação calma do intervalo:
+
+```js
+idle: {
+  preRoutineMinutes: 30,
+  showNextRoutine: true
+}
+```
+
+O painel mostra **Bom dia**, **Boa tarde** ou **Boa noite** conforme os limites configurados em `greetings`. A próxima fase é apresentada quando `showNextRoutine` está ativo; durante os últimos `preRoutineMinutes`, a saudação recebe o destaque visual de proximidade. `showNextRoutine: false` esconde os detalhes da próxima fase.
+
+Os textos da interface podem ser alterados na secção `labels`; se uma chave for omitida, o motor usa o texto português predefinido. Os limites das saudações usam:
+
+```js
+greetings: {
+  morningUntil: "12:00",
+  afternoonUntil: "20:00"
+}
+```
 
 ## Publicar no GitHub Pages
 

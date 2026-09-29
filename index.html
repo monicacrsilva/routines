@@ -21,19 +21,22 @@
       </div>
       <div class="status-heading">
         <span id="weather" class="weather" hidden></span>
+        <span id="weather-location" class="weather-location" hidden></span>
         <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" hidden>🔊 Ativar som</button>
       </div>
     </header>
 
     <main class="current-task" aria-live="polite">
-      <span id="routine-indicator" class="routine-indicator" hidden></span>
+      <span id="phase-indicator" class="phase-indicator" hidden></span>
       <div id="task-icon" class="task-icon" aria-hidden="true">☀️</div>
       <h1 id="task-name">A CARREGAR</h1>
       <p id="counter-label" class="counter-label">TEMPO RESTANTE</p>
       <div id="countdown" class="countdown">--:--</div>
+      <p id="phase-next-label" class="phase-next-label" hidden>Próximo</p>
+      <div id="phase-next" class="phase-next" hidden></div>
     </main>
 
-    <nav class="routine-path" aria-label="Etapas da rotina">
+    <nav class="phase-path" aria-label="Etapas da fase">
       <ol id="timeline" class="timeline"></ol>
     </nav>
   </div>
