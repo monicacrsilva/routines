@@ -19,7 +19,7 @@ Com `day`, a data apresentada ajusta-se ao dia escolhido dentro da semana atual.
 Pode forçar uma fase pelo respetivo `id`, mesmo fora do dia ou horário configurado:
 
 - `index.html?phase=manha-escola`
-- `index.html?phase=manha-escola-quinta&time=08:05`
+- `index.html?phase=manha-escola&time=08:05&day=4`
 
 Um ID inexistente mostra o ecrã neutro. O parâmetro antigo `routine` continua aceite como alias para não quebrar endereços guardados.
 
@@ -115,7 +115,18 @@ Acrescente objetos ao array `window.ROUTINE_CONFIG.dayPhases` em `config.js`. To
 - `enabled`: use `false` para manter uma fase incompleta na configuração sem a apresentar nem a considerar como próxima fase.
 - `priority`: número opcional usado para resolver sobreposições; o valor mais alto ganha e o valor predefinido é `0`.
 - `days`: dias ativos, de `0` (domingo) a `6` (sábado).
+- `skipDates`: datas ou intervalos inclusivos em formato `AAAA-MM-DD` nos quais a fase não fica ativa nem aparece como próxima.
+- `dimMode`: use `true` numa fase passive para aplicar o tema escuro de baixa luminosidade.
 - `dayOverrides`: alterações opcionais por dia da semana.
+
+As férias escolares podem ser excluídas da rotina da manhã e da fase Escola com datas isoladas ou intervalos:
+
+```js
+skipDates: [
+  "2026-12-01",
+  ["2026-12-19", "2027-01-04"]
+]
+```
 
 Uma fase `sequence` aceita ainda:
 
@@ -188,6 +199,19 @@ idle: {
 ```
 
 O painel mostra **Bom dia**, **Boa tarde** ou **Boa noite** conforme os limites configurados em `greetings`. A próxima fase é apresentada quando `showNextRoutine` está ativo; durante os últimos `preRoutineMinutes`, a saudação recebe o destaque visual de proximidade. `showNextRoutine: false` esconde os detalhes da próxima fase.
+
+## Reload automático
+
+Para que um painel mantido aberto receba alterações publicadas e reinicie o estado interno diariamente, configure uma hora de reload:
+
+```js
+automaticReload: {
+  enabled: true,
+  time: "03:00"
+}
+```
+
+O reload é ignorado quando existem parâmetros de simulação no endereço, para não interromper testes. Como o Safari exige interação para autorizar áudio, poderá ser necessário voltar a ativar o som depois do reload.
 
 Os textos da interface podem ser alterados na secção `labels`; se uma chave for omitida, o motor usa o texto português predefinido. Os limites das saudações usam:
 

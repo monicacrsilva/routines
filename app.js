@@ -521,13 +521,39 @@
     button.addEventListener("click", enableAudio);
   }
 
-  function getPhasesForDay(config, day) {
+  function formatIsoDate(date) {
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+  }
+
+  function isPhaseSkipped(phase, date) {
+    var ranges = phase && phase.skipDates;
+    var dateText;
+    var index;
+    var range;
+
+    if (!date || !ranges || !ranges.length) {
+      return false;
+    }
+    dateText = formatIsoDate(date);
+    for (index = 0; index < ranges.length; index += 1) {
+      range = ranges[index];
+      if (typeof range === "string" && dateText === range) {
+        return true;
+      }
+      if (range && range.length === 2 && dateText >= range[0] && dateText <= range[1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function getPhasesForDay(config, day, date) {
     var phases = config && config.dayPhases ? config.dayPhases : [];
     var matches = [];
     var index;
 
     for (index = 0; index < phases.length; index += 1) {
-      if (phases[index] && phases[index].enabled !== false && phases[index].days && phases[index].days.indexOf(day) !== -1) {
+      if (phases[index] && phases[index].enabled !== false && phases[index].days && phases[index].days.indexOf(day) !== -1 && !isPhaseSkipped(phases[index], date)) {
         matches.push(phases[index]);
       }
     }
@@ -682,9 +708,11 @@
 
   function getCurrentPhase(config, day, nowSeconds) {
     var phaseId = arguments.length > 3 ? arguments[3] : "";
+    var date = arguments.length > 4 ? arguments[4] : null;
+    var previousDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1) : null;
     var allPhases = config && config.dayPhases ? config.dayPhases : [];
-    var phases = phaseId ? allPhases : getPhasesForDay(config, day);
-    var previousPhases = phaseId ? [] : getPhasesForDay(config, (day + 6) % 7);
+    var phases = phaseId ? allPhases : getPhasesForDay(config, day, date);
+    var previousPhases = phaseId ? [] : getPhasesForDay(config, (day + 6) % 7, previousDate);
     var candidates = [];
     var active = null;
     var overdue = null;
@@ -742,7 +770,7 @@
     return active || overdue;
   }
 
-  function getNextPhase(config, day, nowSeconds) {
+  function getNextPhase(config, day, nowSeconds, date) {
     var next = null;
     var dayOffset;
     var targetDay;
@@ -750,10 +778,12 @@
     var index;
     var schedule;
     var absoluteStart;
+    var targetDate;
 
     for (dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
       targetDay = (day + dayOffset) % 7;
-      phases = getPhasesForDay(config, targetDay);
+      targetDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate() + dayOffset) : null;
+      phases = getPhasesForDay(config, targetDay, targetDate);
 
       for (index = 0; index < phases.length; index += 1) {
         schedule = buildPhaseSchedule(phases[index], targetDay);
@@ -946,6 +976,28 @@
     };
   }
 
+  function scheduleAutomaticReload(reloadConfig, query) {
+    var reloadSeconds;
+    var now;
+    var reloadAt;
+
+    if (!reloadConfig || reloadConfig.enabled !== true || query.time || query.day || query.phase || query.routine) {
+      return null;
+    }
+    reloadSeconds = parseTime(reloadConfig.time);
+    if (reloadSeconds === null) {
+      return null;
+    }
+    now = new Date();
+    reloadAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, reloadSeconds, 0);
+    if (reloadAt.getTime() <= now.getTime()) {
+      reloadAt.setDate(reloadAt.getDate() + 1);
+    }
+    return window.setTimeout(function () {
+      window.location.reload();
+    }, reloadAt.getTime() - now.getTime());
+  }
+
   function setText(id, value) {
     document.getElementById(id).textContent = value;
   }
@@ -1094,7 +1146,7 @@
   function renderPassivePhase(schedule, time, nextPhase) {
     var hasConfiguredEnd = Boolean(schedule.settings.endTime);
 
-    document.body.className = "state-passive";
+    document.body.className = "state-passive" + (schedule.phase.dimMode === true ? " phase-dim" : "");
     setText("current-time", formatClock(time.seconds));
     setText("phase-indicator", time.simulated ? getLabel("test") : "");
     setText("task-icon", schedule.phase.icon || "");
@@ -1118,8 +1170,8 @@
     function update() {
       var time = getTime();
       var forcedPhase = query.phase || query.routine || "";
-      var schedule = getCurrentPhase(config, time.day, time.seconds, forcedPhase);
-      var nextPhase = getNextPhase(config, time.day, time.seconds);
+      var schedule = getCurrentPhase(config, time.day, time.seconds, forcedPhase, time.date);
+      var nextPhase = getNextPhase(config, time.day, time.seconds, time.date);
       setText("current-date", formatDate(time.date));
       handleSoundAlerts(schedule, time.seconds, config.sounds);
       if (schedule) {
@@ -1133,7 +1185,8 @@
       }
     }
 
-  setupSoundControl(config.sounds);
+    setupSoundControl(config.sounds);
+    scheduleAutomaticReload(config.automaticReload, query);
     update();
     window.setInterval(update, SECOND);
     startWeather(config.weather);
@@ -1162,6 +1215,8 @@
     getViewState: getViewState,
     getCurrentPhase: getCurrentPhase,
     getNextPhase: getNextPhase,
+    isPhaseSkipped: isPhaseSkipped,
+    scheduleAutomaticReload: scheduleAutomaticReload,
     formatGreeting: formatGreeting,
     getIdleSettings: getIdleSettings,
     getIdleState: getIdleState

@@ -44,6 +44,10 @@ window.ROUTINE_CONFIG = {
     preRoutineMinutes: 30,
     showNextRoutine: true
   },
+  automaticReload: {
+    enabled: true,
+    time: "03:00"
+  },
   sounds: {
     enabled: true,
     volume: 0.25,
@@ -85,6 +89,7 @@ window.ROUTINE_CONFIG = {
       enabled: true,
       priority: 10,
       days: [1, 2, 3, 4, 5],
+      skipDates: ["2026-10-05", ["2026-12-19", "2027-01-04"]],
       referenceTime: "08:00",
       anchor: "end",
       warningMinutes: 5,
@@ -155,6 +160,7 @@ window.ROUTINE_CONFIG = {
       enabled: true,
       priority: 5,
       days: [1, 2, 3, 4, 5],
+      skipDates: ["2026-10-05", ["2026-12-19", "2027-01-04"]],
       startTime: "08:00",
       endTime: "17:30",
       dayOverrides: {
@@ -224,6 +230,7 @@ window.ROUTINE_CONFIG = {
       enabled: true,
       priority: 5,
       days: [0, 1, 2, 3, 4, 5, 6],
+      dimMode: true,
       startTime: "22:00",
       endTime: "06:30",
       dayOverrides: {}

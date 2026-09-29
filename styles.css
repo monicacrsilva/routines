@@ -73,6 +73,10 @@ body {
   line-height: 1.15;
 }
 
+.current-date::first-letter {
+  text-transform: uppercase;
+}
+
 .status-heading {
   display: flex;
   flex-direction: column;
@@ -394,6 +398,39 @@ h1 {
 
 .state-passive .countdown {
   display: none;
+}
+
+.phase-dim {
+  color: #9ba8b5;
+  background: #10161c;
+}
+
+.phase-dim .app-shell {
+  background-color: #10161c;
+  background-image: none;
+}
+
+.phase-dim .timeline::before {
+  display: none;
+}
+
+.phase-dim .task-icon {
+  opacity: 0.7;
+}
+
+.phase-dim .current-time,
+.phase-dim h1,
+.phase-dim .phase-next {
+  color: #b7c2cc;
+}
+
+.phase-dim .current-date,
+.phase-dim .weather,
+.phase-dim .weather-location,
+.phase-dim .sound-toggle,
+.phase-dim .counter-label,
+.phase-dim .phase-next-label {
+  color: #74818e;
 }
 
 .state-active .phase-next-label,
