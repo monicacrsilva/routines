@@ -950,6 +950,25 @@
     document.getElementById(id).textContent = value;
   }
 
+  function renderStepProgress(state) {
+    var progressElement = document.getElementById("step-progress");
+    var fillElement = document.getElementById("step-progress-fill");
+    var progress = 0;
+
+    if (state && state.mode === "active" && state.step.durationSeconds > 0) {
+      progress = 1 - (state.remainingSeconds / state.step.durationSeconds);
+      progress = Math.max(0, Math.min(1, progress));
+      fillElement.style.width = (progress * 100) + "%";
+      progressElement.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
+      progressElement.hidden = false;
+      return;
+    }
+
+    fillElement.style.width = "0%";
+    progressElement.setAttribute("aria-valuenow", "0");
+    progressElement.hidden = true;
+  }
+
   function renderTimeline(schedule, activeIndex, nextPhase) {
     var timeline = document.getElementById("timeline");
     var fragment = document.createDocumentFragment();
@@ -1020,6 +1039,7 @@
     setText("task-name", idleState.title);
     setText("counter-label", "");
     setText("countdown", "");
+    renderStepProgress(null);
     setText("phase-next-label", showNextPhase ? formatNextPhaseLabel(nextSchedule) : "");
     setText("phase-next", showNextPhase ? formatIdlePhase(nextSchedule) : "");
     document.getElementById("phase-next-label").hidden = !showNextPhase;
@@ -1061,6 +1081,8 @@
       setText("countdown", state.mode === "overdue" ? formatElapsed(state.elapsedSeconds) : formatClock(schedule.endSeconds));
     }
 
+    renderStepProgress(state);
+
     renderTimeline(schedule, state.activeIndex, nextPhase);
     setText("phase-next-label", "");
     setText("phase-next", "");
@@ -1079,6 +1101,7 @@
     setText("task-name", schedule.phase.name);
     setText("counter-label", hasConfiguredEnd ? formatClock(schedule.startSeconds) + " " + getLabel("rangeSeparator") + " " + formatClock(schedule.endSeconds) : getLabel("from") + " " + formatClock(schedule.startSeconds));
     setText("countdown", "");
+    renderStepProgress(null);
     setText("phase-next-label", formatNextPhaseLabel(nextPhase));
     setText("phase-next", nextPhase ? formatIdlePhase(nextPhase) : "");
     document.getElementById("phase-next-label").hidden = !nextPhase;

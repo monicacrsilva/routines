@@ -59,7 +59,7 @@ body {
 
 .current-time {
   color: var(--clock);
-  font-size: 64px;
+  font-size: 58px;
   font-weight: 750;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -134,8 +134,8 @@ body {
 .phase-indicator {
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .task-icon {
@@ -148,7 +148,7 @@ h1 {
   max-width: 920px;
   margin: 8px 0 18px;
   color: var(--blue);
-  font-size: 58px;
+  font-size: 62px;
   font-weight: 800;
   line-height: 1.05;
 }
@@ -173,12 +173,38 @@ h1 {
   color: var(--remaining);
 }
 
+.step-progress {
+  width: 84%;
+  max-width: 495px;
+  height: 8px;
+  margin-top: 15px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.step-progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--remaining);
+}
+
+.tone-warning .step-progress-fill {
+  background: var(--warning);
+}
+
+.tone-urgent .step-progress-fill {
+  background: var(--urgent);
+}
+
 .phase-path {
   flex: 0 0 auto;
   width: 100%;
   max-width: 1180px;
-  margin: 0 auto;
-  padding: 16px 0;
+  margin: 12px auto 0;
+  padding: 4px 0 16px;
 }
 
 .timeline {
@@ -228,7 +254,7 @@ h1 {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  min-height: 48px;
+  min-height: 34px;
   max-width: 130px;
   margin-top: 8px;
   font-size: 14px;
@@ -257,6 +283,28 @@ h1 {
 
 .timeline-step.is-current .timeline-time {
   color: var(--blue);
+}
+
+.tone-warning .timeline-step.is-current,
+.tone-warning .timeline-step.is-current .timeline-time {
+  color: var(--warning);
+}
+
+.tone-warning .timeline-step.is-current .timeline-icon {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  box-shadow: 0 0 0 5px rgba(154, 101, 0, 0.14);
+}
+
+.tone-urgent .timeline-step.is-current,
+.tone-urgent .timeline-step.is-current .timeline-time {
+  color: var(--urgent);
+}
+
+.tone-urgent .timeline-step.is-current .timeline-icon {
+  border-color: var(--urgent);
+  background: var(--urgent-soft);
+  box-shadow: 0 0 0 5px rgba(186, 38, 54, 0.14);
 }
 
 .timeline-next-phase {
@@ -379,7 +427,7 @@ h1 {
   }
 
   .current-time {
-    font-size: 42px;
+    font-size: 38px;
   }
 
   .current-date {
@@ -419,7 +467,7 @@ h1 {
 
   h1 {
     margin-bottom: 14px;
-    font-size: 38px;
+    font-size: 40px;
   }
 
   .countdown {
@@ -460,7 +508,7 @@ h1 {
   }
 
   .current-time {
-    font-size: 48px;
+    font-size: 44px;
   }
 
   .current-date {
@@ -501,7 +549,7 @@ h1 {
 
   h1 {
     margin: 2px 0 8px;
-    font-size: 40px;
+    font-size: 42px;
   }
 
   .counter-label {
@@ -533,7 +581,7 @@ h1 {
   }
 
   .timeline-label {
-    min-height: 48px;
+    min-height: 34px;
     font-size: 14px;
   }
 
